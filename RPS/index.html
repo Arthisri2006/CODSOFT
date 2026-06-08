@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rock Paper Scissors – Best of 10</title>
+  <meta name="description" content="Play Rock Paper Scissors – Best of 10. Enter your name, play 10 rounds, and let the system crown the winner!" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ░░ Ambient background blobs ░░ -->
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+
+  <!-- ════════════════════════════════════════
+       SCREEN 1 · NAME ENTRY
+       ════════════════════════════════════════ -->
+  <div id="name-screen" class="name-screen">
+    <div class="name-card">
+
+      <div class="name-card-icon">🎮</div>
+      <h1 class="name-card-title">Rock Paper Scissors</h1>
+      <p  class="name-card-sub">Best of 10 · Ultimate Series</p>
+
+      <div class="field-group">
+        <label class="field-label" for="name-input">Your name</label>
+        <input
+          id="name-input"
+          class="field-input"
+          type="text"
+          placeholder="e.g. Alex"
+          maxlength="20"
+          autocomplete="off"
+          spellcheck="false"
+        />
+        <p id="name-error" class="field-error" role="alert"></p>
+      </div>
+
+      <button id="start-btn" class="btn-start">
+        Let's Play <span class="btn-arrow">→</span>
+      </button>
+
+      <p class="name-note">
+        ℹ️ Play all <strong>10 rounds</strong> — the system decides the overall winner automatically!
+      </p>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       FINAL RESULT OVERLAY (full-screen)
+       ════════════════════════════════════════ -->
+  <div id="final-overlay" class="final-overlay" role="dialog" aria-modal="true" aria-labelledby="final-title">
+    <canvas id="final-canvas" class="final-canvas"></canvas>
+
+    <div class="final-card">
+      <div id="final-icon"    class="final-icon">🏆</div>
+      <h2  id="final-title"   class="final-title">Congratulations!</h2>
+      <p   id="final-name"    class="final-name"></p>
+      <p   id="final-message" class="final-message"></p>
+
+      <div class="final-scores">
+        <div class="fscore win">
+          <span id="f-wins"   class="fscore-num">0</span>
+          <span class="fscore-label">Your Wins</span>
+        </div>
+        <div class="fscore draw">
+          <span id="f-draws"  class="fscore-num">0</span>
+          <span class="fscore-label">Draws</span>
+        </div>
+        <div class="fscore loss">
+          <span id="f-losses" class="fscore-num">0</span>
+          <span class="fscore-label">CPU Wins</span>
+        </div>
+      </div>
+
+      <div id="final-dots" class="final-dots"></div>
+
+      <div class="final-actions">
+        <button id="btn-play-again"    class="btn-again">▶ Play Again</button>
+        <button id="btn-change-player" class="btn-change">✎ Change Player</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       HISTORY DRAWER (slides in from right)
+       ════════════════════════════════════════ -->
+  <div id="drawer-backdrop" class="drawer-backdrop"></div>
+  <aside id="history-drawer" class="history-drawer" aria-label="Match History">
+    <div class="drawer-header">
+      <span class="drawer-title">📋 Match History</span>
+      <button id="btn-close-drawer" class="btn-close-drawer" aria-label="Close">✕</button>
+    </div>
+    <div id="history-list" class="history-list">
+      <p id="history-empty" class="history-empty">No rounds yet. Start playing!</p>
+    </div>
+  </aside>
+
+  <!-- ════════════════════════════════════════
+       SCREEN 2 · MAIN GAME
+       ════════════════════════════════════════ -->
+  <main id="game-screen" class="game-screen hidden">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">
+        <span class="logo-icon">✊</span>
+        <h1 class="logo-title">Rock Paper Scissors</h1>
+      </div>
+      <p class="logo-sub">Best of 10 Series</p>
+    </header>
+
+    <!-- Info note -->
+    <div class="info-note">
+      <span>ℹ️</span>
+      <span>Play all <strong>10 rounds</strong> — the system automatically decides the overall <strong>Winner</strong> at the end.</span>
+    </div>
+
+    <!-- Round tracker -->
+    <section class="round-bar">
+      <div class="round-bar-top">
+        <span class="round-label">Round <span id="round-current">1</span> / 10</span>
+        <button id="btn-history" class="btn-history">📋 History</button>
+      </div>
+
+      <div class="dots-row" id="dots-row">
+        <!-- 10 dots injected by JS -->
+      </div>
+
+      <div class="progress-track">
+        <div id="progress-fill" class="progress-fill"></div>
+      </div>
+    </section>
+
+    <!-- Scoreboard -->
+    <section class="scoreboard">
+      <div class="score-card">
+        <span class="score-label">Your Wins</span>
+        <span id="score-wins"  class="score-val">0</span>
+      </div>
+      <div class="score-card draw">
+        <span class="score-label">Draws</span>
+        <span id="score-draws" class="score-val">0</span>
+      </div>
+      <div class="score-card loss">
+        <span class="score-label">CPU Wins</span>
+        <span id="score-losses" class="score-val">0</span>
+      </div>
+    </section>
+
+    <!-- Battle arena -->
+    <section class="arena">
+      <div class="side">
+        <p id="player-label" class="side-label">You</p>
+        <div id="player-orb" class="orb">
+          <span id="player-emoji" class="orb-emoji">❓</span>
+        </div>
+        <p id="player-choice" class="side-choice">–</p>
+      </div>
+
+      <div class="vs">VS</div>
+
+      <div class="side">
+        <p class="side-label">CPU</p>
+        <div id="cpu-orb" class="orb">
+          <span id="cpu-emoji" class="orb-emoji">❓</span>
+        </div>
+        <p id="cpu-choice" class="side-choice">–</p>
+      </div>
+    </section>
+
+    <!-- Result banner -->
+    <div id="result-banner" class="result-banner" aria-live="polite">
+      <span id="result-text">Make your move!</span>
+    </div>
+
+    <!-- Choice buttons -->
+    <section class="choices">
+      <p class="choices-hint">Choose your weapon &nbsp;·&nbsp; <kbd>R</kbd> <kbd>P</kbd> <kbd>S</kbd></p>
+      <div class="choices-row">
+        <button class="choice-btn" id="btn-rock"     data-choice="rock">
+          <span class="choice-emoji">✊</span>
+          <span class="choice-name">Rock</span>
+          <span class="choice-glow"></span>
+        </button>
+        <button class="choice-btn" id="btn-paper"    data-choice="paper">
+          <span class="choice-emoji">✋</span>
+          <span class="choice-name">Paper</span>
+          <span class="choice-glow"></span>
+        </button>
+        <button class="choice-btn" id="btn-scissors" data-choice="scissors">
+          <span class="choice-emoji">✌️</span>
+          <span class="choice-name">Scissors</span>
+          <span class="choice-glow"></span>
+        </button>
+      </div>
+    </section>
+
+    <!-- New game -->
+    <div class="game-footer">
+      <button id="btn-new-game" class="btn-new-game">↺ New Game</button>
+    </div>
+
+  </main>
+
+  <!-- Background particle canvas -->
+  <canvas id="bg-canvas" class="bg-canvas"></canvas>
+
+  <script src="game.js"></script>
+</body>
+</html>

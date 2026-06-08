@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calculator</title>
+  <meta name="description" content="Clean standard calculator powered by Python & Flask" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ── RESET ── */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    /* ── BODY ── */
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #e9eaf2;
+      font-family: 'Inter', sans-serif;
+      transition: background .35s;
+    }
+    body.dark { background: #111114; }
+
+    /* ── THEME BUTTON ── */
+    #themeBtn {
+      position: fixed;
+      top: 16px; right: 16px;
+      width: 42px; height: 42px;
+      border: none; border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 2px 10px rgba(0,0,0,.14);
+      font-size: 19px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .3s, transform .2s;
+      z-index: 100;
+    }
+    body.dark #themeBtn { background: #27272c; }
+    #themeBtn:hover { transform: scale(1.1); }
+
+    /* ── CARD ── */
+    .card {
+      width: 360px;
+      background: #fff;
+      border-radius: 28px;
+      overflow: hidden;
+      box-shadow:
+        0 2px 4px rgba(0,0,0,.04),
+        0 8px 24px rgba(0,0,0,.09),
+        0 24px 56px rgba(0,0,0,.1);
+      animation: rise .4s cubic-bezier(.22,1,.36,1) both;
+    }
+    body.dark .card {
+      background: #1c1c20;
+      box-shadow:
+        0 2px 4px rgba(0,0,0,.3),
+        0 8px 24px rgba(0,0,0,.5),
+        0 24px 56px rgba(0,0,0,.6);
+    }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(28px) scale(.97); }
+      to   { opacity: 1; transform: translateY(0)    scale(1); }
+    }
+
+    /* ── HEADER ── */
+    .header {
+      padding: 16px 20px 13px;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      border-bottom: 1px solid #f0f0f4;
+    }
+    body.dark .header { border-color: #2c2c32; }
+
+    .header-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, #5b9bfa 0%, #1a5fe0 100%);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+      box-shadow: 0 3px 10px rgba(26,95,224,.3);
+    }
+    .header-title { font-size: 15px; font-weight: 600; color: #0f0f0f; line-height: 1.2; }
+    body.dark .header-title { color: #e6e6ea; }
+    .header-sub   { font-size: 11px; color: #999; }
+    body.dark .header-sub { color: #555; }
+
+    /* ── DISPLAY ── */
+    .display {
+      background: #f6f7fb;
+      padding: 20px 22px 16px;
+      min-height: 128px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: flex-end;
+      gap: 4px;
+      border-bottom: 1px solid #f0f0f4;
+    }
+    body.dark .display {
+      background: #141417;
+      border-color: #2c2c32;
+    }
+
+    /* Expression history — dim small text */
+    .d-expr {
+      font-size: 13.5px;
+      font-weight: 400;
+      color: #b0b0b8;
+      min-height: 20px;
+      text-align: right;
+      word-break: break-all;
+      transition: opacity .2s;
+    }
+    body.dark .d-expr { color: #444450; }
+
+    /* Main number */
+    .d-num {
+      font-size: 54px;
+      font-weight: 300;
+      color: #0f0f0f;
+      text-align: right;
+      word-break: break-all;
+      line-height: 1.05;
+      letter-spacing: -2px;
+      transition: color .15s;
+    }
+    body.dark .d-num { color: #ededf1; }
+
+    /* Animations */
+    .d-num.pop {
+      animation: pop .22s cubic-bezier(.34,1.5,.64,1);
+    }
+    @keyframes pop {
+      0%   { opacity: .4; transform: scale(.95); }
+      100% { opacity: 1;  transform: scale(1); }
+    }
+
+    .d-num.err {
+      animation: wobble .38s ease;
+      color: #dc2626 !important;
+    }
+    body.dark .d-num.err { color: #f87171 !important; }
+    @keyframes wobble {
+      0%,100% { transform: translateX(0); }
+      20%     { transform: translateX(-9px); }
+      50%     { transform: translateX(9px); }
+      75%     { transform: translateX(-4px); }
+    }
+
+    /* ── KEYPAD GRID ── */
+    /*
+       Layout (4 cols):
+       Row 1 : AC   ⌫   +/−   ÷
+       Row 2 :  7    8    9    ×
+       Row 3 :  4    5    6    −
+       Row 4 :  1    2    3    +
+       Row 5 :  0 (×2)   .    =  (×2)
+    */
+    .keys {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      background: #e6e6ec;   /* gap colour */
+    }
+    body.dark .keys { background: #28282e; }
+
+    /* ── BUTTON BASE ── */
+    .k {
+      height: 74px;
+      border: none;
+      font-family: 'Inter', sans-serif;
+      font-size: 21px;
+      font-weight: 400;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      outline: none;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      transition: background .1s, transform .08s;
+      position: relative;
+    }
+    .k:active { transform: scale(.93); }
+
+    /* Number keys — white */
+    .k-n {
+      background: #fff;
+      color: #111;
+      font-size: 23px;
+    }
+    body.dark .k-n { background: #1c1c20; color: #e8e8ec; }
+    .k-n:hover { background: #f4f4f8; }
+    body.dark .k-n:hover { background: #222226; }
+
+    /* Operator keys — soft blue */
+    .k-op {
+      background: #eef1ff;
+      color: #2563eb;
+      font-size: 23px;
+      font-weight: 500;
+    }
+    body.dark .k-op { background: #18213e; color: #6da4ff; }
+    .k-op:hover { background: #e1e7ff; }
+    body.dark .k-op:hover { background: #1c2848; }
+
+    /* Active operator — highlighted while waiting for second number */
+    .k-op.active-op {
+      background: #2563eb;
+      color: #fff;
+    }
+    body.dark .k-op.active-op { background: #1d55d0; color: #fff; }
+
+    /* Utility keys — light grey */
+    .k-util {
+      background: #f0f0f5;
+      color: #333;
+      font-size: 19px;
+      font-weight: 500;
+    }
+    body.dark .k-util { background: #26262c; color: #bbb; }
+    .k-util:hover { background: #e6e6ec; }
+    body.dark .k-util:hover { background: #2e2e34; }
+
+    /* AC key — red */
+    .k-ac {
+      background: #fff1f1;
+      color: #dc2626;
+      font-size: 17px;
+      font-weight: 600;
+    }
+    body.dark .k-ac { background: #2c1818; color: #f87171; }
+    .k-ac:hover { background: #ffe2e2; }
+    body.dark .k-ac:hover { background: #381e1e; }
+
+    /* Equals — solid blue, spans 2 columns */
+    .k-eq {
+      background: #2563eb;
+      color: #fff;
+      font-size: 28px;
+      font-weight: 300;
+      grid-column: span 2;
+    }
+    .k-eq:hover { background: #1d58d8; }
+    body.dark .k-eq { background: #1d58d8; }
+    body.dark .k-eq:hover { background: #1a4fc0; }
+
+    /* Zero — spans 2 columns */
+    .k-zero { grid-column: span 2; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 400px) {
+      .card { width: 100vw; border-radius: 0; }
+      .k    { height: 64px; }
+      .d-num { font-size: 44px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Dark / Light toggle -->
+  <button id="themeBtn" aria-label="Toggle theme">🌙</button>
+
+  <!-- Calculator card -->
+  <div class="card">
+
+    <!-- Header -->
+    <div class="header">
+      <div class="header-icon">🧮</div>
+      <div>
+        <div class="header-title">Calculator</div>
+        <div class="header-sub">Standard · Python Backend</div>
+      </div>
+    </div>
+
+    <!-- Display -->
+    <div class="display">
+      <div class="d-expr" id="dExpr"></div>
+      <div class="d-num"  id="dNum">0</div>
+    </div>
+
+    <!-- Keypad -->
+    <div class="keys">
+
+      <!-- Row 1 -->
+      <button class="k k-ac"   id="bAC"  onclick="doAC()">AC</button>
+      <button class="k k-util" id="bDel" onclick="doDel()">⌫</button>
+      <button class="k k-util" id="bNeg" onclick="doNeg()">+/−</button>
+      <button class="k k-op"   id="bDiv" onclick="doOp('÷')">÷</button>
+
+      <!-- Row 2 -->
+      <button class="k k-n" id="b7" onclick="doNum('7')">7</button>
+      <button class="k k-n" id="b8" onclick="doNum('8')">8</button>
+      <button class="k k-n" id="b9" onclick="doNum('9')">9</button>
+      <button class="k k-op" id="bMul" onclick="doOp('×')">×</button>
+
+      <!-- Row 3 -->
+      <button class="k k-n" id="b4" onclick="doNum('4')">4</button>
+      <button class="k k-n" id="b5" onclick="doNum('5')">5</button>
+      <button class="k k-n" id="b6" onclick="doNum('6')">6</button>
+      <button class="k k-op" id="bSub" onclick="doOp('-')">−</button>
+
+      <!-- Row 4 -->
+      <button class="k k-n" id="b1" onclick="doNum('1')">1</button>
+      <button class="k k-n" id="b2" onclick="doNum('2')">2</button>
+      <button class="k k-n" id="b3" onclick="doNum('3')">3</button>
+      <button class="k k-op" id="bAdd" onclick="doOp('+')">+</button>
+
+      <!-- Row 5 -->
+      <button class="k k-n k-zero" id="b0"  onclick="doNum('0')">0</button>
+      <button class="k k-util"     id="bDot" onclick="doDot()">.</button>
+      <button class="k k-eq"       id="bEq"  onclick="doEq()">=</button>
+
+    </div>
+  </div><!-- .card -->
+
+  <script>
+    'use strict';
+
+    // ── THEME ──────────────────────────────────────────────────────────────────
+    const themeBtn = document.getElementById('themeBtn');
+    let darkMode   = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    function applyTheme() {
+      document.body.classList.toggle('dark', darkMode);
+      themeBtn.textContent = darkMode ? '☀️' : '🌙';
+    }
+    applyTheme();
+    themeBtn.addEventListener('click', () => { darkMode = !darkMode; applyTheme(); });
+
+
+    // ── STATE ──────────────────────────────────────────────────────────────────
+    let current    = '0';   // string shown on display
+    let operandA   = null;  // first number (stored when op pressed)
+    let operator   = null;  // pending operator symbol
+    let freshInput = false; // true → next digit starts a new number
+
+
+    // ── DOM REFS ───────────────────────────────────────────────────────────────
+    const dNum  = document.getElementById('dNum');
+    const dExpr = document.getElementById('dExpr');
+
+    // Map operator symbols → button IDs for highlight management
+    const OP_BTNS = { '+': 'bAdd', '-': 'bSub', '×': 'bMul', '÷': 'bDiv' };
+
+
+    // ── DISPLAY HELPERS ────────────────────────────────────────────────────────
+    function setDisplay(value, animate = false) {
+      current = String(value);
+      dNum.textContent = current;
+      if (animate) {
+        dNum.classList.remove('pop');
+        void dNum.offsetWidth;                // force reflow
+        dNum.classList.add('pop');
+        dNum.addEventListener('animationend', () => dNum.classList.remove('pop'), { once: true });
+      }
+    }
+
+    function setExpr(text) {
+      dExpr.textContent = text;
+    }
+
+    function showError(message) {
+      dNum.textContent = message;
+      dNum.classList.remove('err');
+      void dNum.offsetWidth;
+      dNum.classList.add('err');
+      dNum.addEventListener('animationend', () => dNum.classList.remove('err'), { once: true });
+    }
+
+
+    // ── OPERATOR HIGHLIGHT ─────────────────────────────────────────────────────
+    function clearOpHighlight() {
+      Object.values(OP_BTNS).forEach(id => {
+        document.getElementById(id)?.classList.remove('active-op');
+      });
+    }
+
+    function highlightOp(sym) {
+      clearOpHighlight();
+      const id = OP_BTNS[sym];
+      if (id) document.getElementById(id).classList.add('active-op');
+    }
+
+
+    // ── NUMBER INPUT ───────────────────────────────────────────────────────────
+    function doNum(digit) {
+      if (freshInput) { current = '0'; freshInput = false; }
+      if (current === '0' && digit !== '.') {
+        current = digit;
+      } else if (current.length < 15) {
+        current += digit;
+      }
+      setDisplay(current);
+    }
+
+    function doDot() {
+      if (freshInput) { current = '0'; freshInput = false; }
+      if (!current.includes('.')) {
+        current += '.';
+        setDisplay(current);
+      }
+    }
+
+    function doNeg() {
+      if (current === '0') return;
+      current = current.startsWith('-') ? current.slice(1) : '-' + current;
+      setDisplay(current);
+    }
+
+
+    // ── OPERATOR ───────────────────────────────────────────────────────────────
+    function doOp(sym) {
+      operandA   = parseFloat(current);
+      operator   = sym;
+      freshInput = true;
+      setExpr(operandA + ' ' + sym);
+      highlightOp(sym);
+    }
+
+
+    // ── EQUALS ─────────────────────────────────────────────────────────────────
+    async function doEq() {
+      if (operandA === null || operator === null) return;
+
+      const operandB = parseFloat(current);
+      if (isNaN(operandB)) { showError('Error'); return; }
+
+      setExpr(`${operandA} ${operator} ${operandB} =`);
+      clearOpHighlight();
+
+      try {
+        const response = await fetch('/calculate', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ num1: operandA, num2: operandB, operation: operator })
+        });
+        const data = await response.json();
+
+        if (data.error) {
+          showError(data.result || 'Error');
+        } else {
+          setDisplay(data.result, true);
+        }
+      } catch (_) {
+        showError('Network Error');
+      }
+
+      // Reset state — next digit press starts fresh
+      operandA   = null;
+      operator   = null;
+      freshInput = true;
+    }
+
+
+    // ── CLEAR & DELETE ─────────────────────────────────────────────────────────
+    function doAC() {
+      current    = '0';
+      operandA   = null;
+      operator   = null;
+      freshInput = false;
+      setDisplay('0');
+      setExpr('');
+      clearOpHighlight();
+    }
+
+    function doDel() {
+      if (freshInput) return;
+      current = current.length > 1 ? current.slice(0, -1) : '0';
+      setDisplay(current);
+    }
+
+
+    // ── KEYBOARD SUPPORT ───────────────────────────────────────────────────────
+    document.addEventListener('keydown', e => {
+      if ('0123456789'.includes(e.key)) { doNum(e.key); }
+      else if (e.key === '.')           { doDot(); }
+      else if (e.key === '+')           { doOp('+'); }
+      else if (e.key === '-')           { doOp('-'); }
+      else if (e.key === '*')           { doOp('×'); }
+      else if (e.key === '/')           { e.preventDefault(); doOp('÷'); }
+      else if (e.key === 'Enter' || e.key === '=') { doEq(); }
+      else if (e.key === 'Backspace')   { doDel(); }
+      else if (e.key === 'Escape')      { doAC(); }
+    });
+  </script>
+</body>
+</html>
